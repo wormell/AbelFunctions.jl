@@ -1,7 +1,9 @@
 module AbelFunctions
-using ValidatedNumerics, IntervalRootFinding
+using Compat, ValidatedNumerics, IntervalRootFinding
 
+include("general.jl")
 include("neutral.jl")
 include("newton.jl")
+include("pomeaumanneville.jl")
 
 end # module

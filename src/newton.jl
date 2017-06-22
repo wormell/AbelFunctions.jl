@@ -1,11 +1,11 @@
 # REAL INTERVAL NEWTON
 
-@compat struct FHat{T}
+@compat struct FHat{T}<:Function
   r::NeutralRecurrence{T}
 end
 @compat (d::FHat)(x) = x*(1+d.r.fa(x))^d.r.α
 
-@compat struct DFHat{T}
+@compat struct DFHat{T}<:Function
   r::NeutralRecurrence{T}
 end
 @compat function (d::DFHat)(x)
@@ -14,55 +14,57 @@ end
   (1+d.r.α*x/fa)*faα
 end
 
-mapinv_trans{T}(r::NeutralRecurrence{Interval{T}},y::Interval{T}) = newton(FHat(r),DFHat(r),y)
-mapinv{T}(r::NeutralRecurrence{Interval{T}},y::Interval{T}) = mapinv_trans(r,(y-r.p)^r.α*r.sgn)^(1/r.α)*r.sgn + r.p
+function mapinv_trans{T}(r::NeutralRecurrence{Interval{T}},y::Real)
+  nr = newton(FHat(r),DFHat(r),Interval{T}(y))
+  @assert length(nr) == 1
+  nr[1].interval
+end
+mapinv{T}(r::NeutralRecurrence{Interval{T}},y::Real) = mapinv_trans(r,(Interval{T}(y)-r.p)^r.α*r.sgn)^(1/r.α)*r.sgn + r.p
 
 
 # COMPLEX/GENERAL NEWTON
 
-function neutral_newtown_step{T}(r::NeutralRecurrence{T},y::T,x::T)
+function neutral_newton_step{T}(r::NeutralRecurrence{T},y,x)
   fa = 1+r.fa(x)
   faα = fa^r.α
-  x = x-(x-y/faα)/(1+r.α*x/fa)
-  x,x*faα-y
+  xx = x-(x-y/faα)/(1+r.α*r.dfa(x)*x/fa)
+  xx,abs(x*faα-y)
 end
 
 
-function neutral_newton_trans{T}(r::NeutralRecurrence{T},y::T,tol=20eps(abs(y)))
-  x = zero(T)
+function neutral_newton_trans{T}(r::NeutralRecurrence{T},y,tol=100eps(abs(y)))
+  x = T(r.rad)
   K = log(r.dlogdfmax/2)
-  for n = 1:2ceil(Int,log((log(r.rad)+K)/(log(tol)+K)))
-    x,rm = neutral_newtown_step(r,y,x)
-    abs(rm) < tol && break
+  rm = zero(T)
+  for n = 1:3ceil(Int,log2((log(tol)+K)/(log(r.rad)+K)))
+    x,rm = neutral_newton_step(r,y,x)
+    rm < tol && break
   end
+  rm > tol && error("Newton iteration: failure to converge: x=$x, y=$y, rm=$rm")
   # check nothing's wrong
   x
 end
 
-neutral_newton{T<:Real}(r::NeutralRecurrence{T},y::T,tol=20eps(abs(y-r.p)^α)) =
-  neutral_newton_trans(r,(y-r.p)^r.α *r.sgn,tol)^(1/r.α) * r.sgn+r.p
-
-for op in (:∩,:∪)
-  @eval @compat ($op){T<:Interval,S<:Interval}(x::Complex{T},y::Complex{S}) =
-    complex(($op)(real(x),real(y)),($op)(imag(x),imag(y)))
-end
-
-function neutral_newton_trans{T}(r::NeutralRecurrence{Interval{T}},y,tol=20eps(abs(y).hi))  @assert
-  @assert abs(y) < r.rad
-  @assert abs(arg(y)) < r.Ψ
-  x = zero(Interval(T))
-  K = log(r.dlogdfmax/2) # make exact
-  for n = 1:ceil(Int,log((log(r.rad)+K)/(log(tol)+K)))
-    x = Interval(mid(x))
-    x,rm = neutral_newton_step(r,y,x)
-    abs(rm).hi < tol && break
-  end
-  neutral_newton_step(r,y,x) ∩ x
-  end
-end
-
-neutral_newton{T}(r::NeutralRecurrence{T},y::T,tol=20eps(abs(y-r.p))) =
+neutral_newton{T}(r::NeutralRecurrence{T},y,tol=20eps(abs(y-r.p))) =
   neutral_newton_trans(r,(y-r.p)^r.α *r.sgn,tol^r.α)^(1/r.α) * r.sgn+r.p
 
-mapinv_trans{T}(r::NeutralRecurrence{T},y) = neutral_newton_trans(r,T(y))
-mapinv{T}(r::NeutralRecurrence{T},y) = neutral_newton(r,T(y))
+
+function neutral_newton_trans{T}(r::NeutralRecurrence{Interval{T}},y,tol=20eps(abs(y).hi))
+  @assert abs(y) < r.rad
+  @assert abs(angle(y)) < r.Ψ
+  x = copy(y)
+  K = log(r.dlogdfmax/2) # make exact
+  for n = 1:roundupbound(log2((log(tol)+K)/(log(r.rad)+K)))
+    x,rm = neutral_newton_step(r,y,midinterval(x))
+    rm.hi < tol && break
+  end
+  neutral_newton_step(r,y,x)[1] ∩ x
+end
+
+neutral_newton{T}(r::NeutralRecurrence{Interval{T}},y,tol=20eps((abs(y-r.p).hi)^r.α)) =
+  neutral_newton_trans(r,(y-r.p)^r.α *r.sgn,tol)^(1/r.α) * r.sgn+r.p
+
+mapinv_trans{T}(r::NeutralRecurrence{T},y::Real) = neutral_newton_trans(r,T(y))
+mapinv{T}(r::NeutralRecurrence{T},y::Real) = neutral_newton(r,T(y))
+mapinv_trans{T}(r::NeutralRecurrence{T},y::Complex) = neutral_newton_trans(r,Complex{T}(y))
+mapinv{T}(r::NeutralRecurrence{T},y::Complex) = neutral_newton(r,Complex{T}(y))
