@@ -1,5 +1,7 @@
 module AbelFunctions
+using ValidatedNumerics, IntervalRootFinding
 
-# package code goes here
+include("neutral.jl")
+include("newton.jl")
 
 end # module
