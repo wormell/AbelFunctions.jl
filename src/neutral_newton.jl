@@ -2,24 +2,25 @@
 
 @compat struct FHat{T}<:Function
   r::NeutralRecurrence{T}
+  val::T
 end
-@compat (d::FHat)(x) = x*(1+d.r.fa(x))^d.r.α
+@compat (d::FHat)(ẑ) = ẑ*(1+d.r.fa(ẑ))^d.r.α - d.val
 
 @compat struct DFHat{T}<:Function
   r::NeutralRecurrence{T}
 end
-@compat function (d::DFHat)(x)
-  fa = 1+d.r.fa(x)
+@compat function (d::DFHat)(ẑ)
+  fa = 1+d.r.fa(ẑ)
   faα = fa^d.r.α
-  (1+d.r.α*x/fa)*faα
+  (1+d.r.α*d.r.dfa(ẑ)*ẑ/fa)*faα
 end
 
-function mapinv_trans{T}(r::NeutralRecurrence{Interval{T}},y::Real)
-  nr = newton(FHat(r),DFHat(r),Interval{T}(y))
+function mapinv_trans{T}(r::NeutralRecurrence{Interval{T}},y::Interval)
+  nr = IntervalRootFinding.newton(FHat(r,y),DFHat(r),Interval{T}(0,y.hi))
   @assert length(nr) == 1
   nr[1].interval
 end
-mapinv{T}(r::NeutralRecurrence{Interval{T}},y::Real) = mapinv_trans(r,(Interval{T}(y)-r.p)^r.α*r.sgn)^(1/r.α)*r.sgn + r.p
+mapinv{T}(r::NeutralRecurrence{Interval{T}},y::Real) = unhat(mapinv_trans(r,hat(Interval{T}(y),r)),r)
 
 
 # COMPLEX/GENERAL NEWTON
@@ -46,7 +47,7 @@ function neutral_newton_trans{T}(r::NeutralRecurrence{T},y,tol=100eps(abs(y)))
 end
 
 neutral_newton{T}(r::NeutralRecurrence{T},y,tol=20eps(abs(y-r.p))) =
-  neutral_newton_trans(r,(y-r.p)^r.α *r.sgn,tol^r.α)^(1/r.α) * r.sgn+r.p
+  unhat(neutral_newton_trans(r,hat(y,r),tol^r.α),r)
 
 
 function neutral_newton_trans{T}(r::NeutralRecurrence{Interval{T}},y,tol=20eps(abs(y).hi))
@@ -62,7 +63,7 @@ function neutral_newton_trans{T}(r::NeutralRecurrence{Interval{T}},y,tol=20eps(a
 end
 
 neutral_newton{T}(r::NeutralRecurrence{Interval{T}},y,tol=20eps((abs(y-r.p).hi)^r.α)) =
-  neutral_newton_trans(r,(y-r.p)^r.α *r.sgn,tol)^(1/r.α) * r.sgn+r.p
+  unhat(neutral_newton_trans(r,hat(y,r),tol),r)
 
 mapinv_trans{T}(r::NeutralRecurrence{T},y::Real) = neutral_newton_trans(r,T(y))
 mapinv{T}(r::NeutralRecurrence{T},y::Real) = neutral_newton(r,T(y))

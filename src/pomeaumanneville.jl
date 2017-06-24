@@ -14,6 +14,8 @@ PomDFA(α) = PomDFA(α,exp2(α))
 
 function Pom(α,T=typeof(float(α)))
   αT = convert(T,α)
-  rad = one(T)/3 # may need to be smaller for Newton convergence
-  NeutralRecurrence(PomFA(αT),PomDFA(αT),αT,rad,T(π)/2,exp2(αT+1)*αT;p=zero(T),sgn=1)
+  pow2αT = exp2(αT)
+  Ψ = T(π)/4max(1,α)
+  rad = exp2(-α-1)# for convergence of derivatives of w, log(f̂)-1 
+  NeutralRecurrence(PomFA(αT),PomDFA(αT),αT,rad,T(π)/2,2pow2αT*αT,pow2αT,(1+2rad*pow2αT)^(-αT)/sqrt(T(2));p=zero(T),sgn=1)
 end
