@@ -3,11 +3,12 @@
   # rad::T # radius of accuracy
   coeffs::Vector{T}
   offset::T
-  n::Int # order of approx (=length(coeffs) -2)
+  n::Int # order of approximation (≥ncall)
   nrad::T # radius of there being bounds given n
   noptrad::T # radius of exponential accuracy given n
-  # calln::T # how many coeffs to call on
-  # ncallrad::T # radius of callability
+  ncall::Int # (=length(coeffs) -2)
+  callrad::T # radius of callability
+  compresserr::T # compression error on radius of callability
   cr::T
   E1::T
   E2::T
@@ -23,16 +24,29 @@ abelerrorconstant2(r::NeutralRecurrence) = (2r.F*cr(r)/3r.dfa0)
 ## CONSTRUCTORS
 
 # constructing given coefficients and offset
-function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T},offset::T)
+function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T},offset::T;compress=true)
   n = length(coeffs)-2
   nrad = min(log(T(2))/(r.F*(r.α*n-1)),r.rad)
-  AbelFunction{T,ffa,dffa}(r,coeffs,offset,n,nrad,nrad*cr(r)/Base.e,#nrad,n,
+
+  noptrad = nrad*cr(r)/Base.e
+  if compress
+    callrad=2noptrad # default??
+    cs = reverse(cumsum(reverse(abs.((-1:n).*coeffs).*callrad.^(-1:n))))
+    ncall = findlast(cs.>prec(T))
+    compresserr = cs[ncall+1]/callrad^(ncall+1)/(ncall+1)
+  else
+    callrad=nrad
+    ncall = n
+    compresserr = zero(T)
+  end
+
+  AbelFunction{T,ffa,dffa}(r,coeffs,offset,n,nrad,noptrad,ncall,callrad,compresserr,
   cr(r),abelerrorconstant1(r),abelerrorconstant2(r))
 end
 
 # constructing given coefficients and basepoint
-function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T};basepoint::Real=unhat(r.rad,r))
-  a = AbelFunction(r,coeffs,zero(T))
+function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T};basepoint::Real=unhat(r.rad,r),compress=true)
+  a = AbelFunction(r,coeffs,zero(T),compress=compress)
   @assert basepoint > 0
   bp = hat(basepoint,r)
   ctr = 0
@@ -45,7 +59,7 @@ function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vecto
 end
 
 # constructing given order and basepoint
-function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},n::Int;basepoint::Real=unhat(r.rad,r))
+function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},n::Int;basepoint::Real=unhat(r.rad,r),compress=true)
   s = min(log(T(2))/(r.F*(r.α*n-1)),r.rad/2)
   Rs = max(r.rad,2s)
 
@@ -84,14 +98,14 @@ function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},n::Int;basepo
     MRsW *= MRsWtwid
     W[i+1:end,i+1] = real(taylortransform(Wvals[:,i+1],s,i*MRsW,Rs)[1:n+1-i])
   end
-  AbelFunction(r,[1/(r.dfa0*r.α);W\w],basepoint=basepoint)#,W,w
+  AbelFunction(r,[1/(r.dfa0*r.α);W\w],basepoint=basepoint,compress=compress)#,W,w
 end
 
 # constructing given only basepoint
-function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa};basepoint::Real=unhat(r.rad,r),tol=prec(T))
+function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa};basepoint::Real=unhat(r.rad,r),tol=prec(T),compress=true)
   ec = abelerrorconstant1(r)*(1+abelerrorconstant2(r))
   n = roundupbound(-log(tol/ec)-1)
-  AbelFunction(r,n;basepoint=basepoint)
+  AbelFunction(r,n;basepoint=basepoint,compress=compress)
 end
 
 # TODO: #PRUNING COEFFICIENTS
@@ -103,9 +117,18 @@ end
 # # TODO: ascertain 1. if this is right 2. decide if need rad to be the same as well
 # (==)(a1::AbelFunction,a2::AbelFunction) = (a1.offset==a2.offset)&&(a1.r == a2.r)
 
+function abelerror{T}(a::AbelFunction{T},ẑ,n=a.n)
+  Reẑii = real(ẑ)*(1+(imag(ẑ)/real(ẑ))^2)
+  a.E1*(1+a.E2)*(Reẑii/(a.cr*a.nrad))^(n+1) + abs(ẑ)^(a.ncall+1)*a.compresserr
+end
+function abelerrorD{T}(a::AbelFunction{T},ẑ,n=a.n)
+  30abs(ẑ)*erroradjustment(T,abelerror(a,ẑ,n)) #TODO: get actual error bounds lol
+  #includes: + (a.ncall+1)*abs(ẑ)^(a.ncall+1)*a.compresserr
+end
+
 @compat (a::AbelFunction)(z) = map_trans(a,hat(z,a.r))
 function map_trans(a::AbelFunction,ẑ)
-  @assert abs(ẑ) < a.nrad
+  @assert abs(ẑ) < a.callrad
   R = a.coeffs[1]/ẑ + a.coeffs[2]*log(ẑ)
   ẑpow = copy(ẑ)
   for i = 1:a.n
@@ -119,23 +142,45 @@ function map_trans(a::AbelFunction,ẑ)
   R
 end
 
-
-function abelerror{T}(a::AbelFunction{T},ẑ,n=a.n)
-  Reẑii = real(ẑ)*(1+(imag(ẑ)/real(ẑ))^2)
-  a.E1*(1+a.E2)*(Reẑii/(a.cr*a.nrad))^(n+1)
-end
-
-@compat function mapD{T}(a::AbelFunction{T},z)
+function mapD{T}(a::AbelFunction{T},z)
   zt = a.r.sgn*(z-a.r.p)
   ẑ = zt^a.r.α
-  @assert abs(ẑ) < a.nrad
-  dR = -a.coeffs[1]/ẑ + a.coeffs[2]*a.r.α
+  map_transD(a,ẑ)*a.r.α*ẑ/zt
+end
+
+function mapD_trans{T}(a::AbelFunction{T},ẑ)
+  @assert abs(ẑ) < a.callrad
+  dR = -a.coeffs[1]/ẑ
+  dR = (dR + a.coeffs[2])/ẑ
   ẑpow = copy(ẑ)
   for i = 1:a.n
     dR += i*a.coeffs[i+2]*ẑpow
     ẑpow *= ẑ
   end
-  dR *= a.r.α/zt
-  dR += 30abs(ẑ)*erroradjustment(T,abelerror(a,ẑ,a.n)) #TODO: get actual error bounds lol
+  dR += erroradjustment(T,abelerrorD(a,ẑ))
   dR
+end
+
+function mapP{T}(a::AbelFunction{T},z)
+  zt = a.r.sgn*(z-a.r.p)
+  ẑ = zt^a.r.α
+  R,dR = map_transP(a,ẑ)
+  R,dR*a.r.α*ẑ/zt
+end
+function mapP_trans{T}(a::AbelFunction{T},ẑ)
+  @assert abs(ẑ) < a.callrad
+  R = a.coeffs[1]/ẑ + a.coeffs[2]*log(ẑ)
+  dR = -a.coeffs[1]/ẑ
+  dR = (dR + a.coeffs[2])/ẑ
+  ẑpow = copy(ẑ)
+  for i = 1:a.n
+    pe = a.coeffs[i+2]*ẑpow
+    R += pe
+    dR += i*pe
+    ẑpow *= ẑ
+  end
+  dR += erroradjustment(T,abelerrorD(a,ẑ))
+  R += a.offset
+  R += erroradjustment(abelerror(a,ẑ))
+  R,dR
 end

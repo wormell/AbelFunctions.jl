@@ -7,6 +7,8 @@ include("neutral.jl")
 include("neutral_newton.jl")
 include("pomeaumanneville.jl")
 include("abelfunction.jl")
-# include("abelfunction_newton.jl")
+include("abelfunction_newton.jl")
+
+export AbelFunction, mapinv, mapinv_trans, map_trans, mapD, NeutralRecurrence
 
 end # module

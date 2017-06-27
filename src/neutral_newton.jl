@@ -43,6 +43,7 @@ function neutral_newton_trans{T}(r::NeutralRecurrence{T},y,tol=100eps(abs(y)))
   end
   rm > tol && error("Newton iteration: failure to converge: x=$x, y=$y, rm=$rm")
   # check nothing's wrong
+  x += erroradjustment(typeof(x),tol)
   x
 end
 
@@ -59,6 +60,7 @@ function neutral_newton_trans{T}(r::NeutralRecurrence{Interval{T}},y,tol=20eps(a
     x,rm = neutral_newton_step(r,y,midinterval(x))
     rm.hi < tol && break
   end
+  x += erroradjustment(typeof(x),tol)
   neutral_newton_step(r,y,x)[1] ∩ x
 end
 
