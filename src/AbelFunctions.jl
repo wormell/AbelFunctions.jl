@@ -1,5 +1,6 @@
 module AbelFunctions
-using Compat, ValidatedNumerics, IntervalRootFinding, FastTransforms
+using Compat, ValidatedNumerics, FastTransforms
+#using IntervalRootFinding
 
 include("general.jl")
 include("taylortransform.jl")
