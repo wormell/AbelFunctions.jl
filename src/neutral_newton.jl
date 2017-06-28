@@ -9,11 +9,7 @@ end
 @compat struct DFHat{T}<:Function
   r::NeutralRecurrence{T}
 end
-@compat function (d::DFHat)(ẑ)
-  fa = 1+d.r.fa(ẑ)
-  faα = fa^d.r.α
-  (1+d.r.α*d.r.dfa(ẑ)*ẑ/fa)*faα
-end
+@compat (d::DFHat)(ẑ) = mapD_trans(d.r,ẑ)
 
 function mapinv_trans{T}(r::NeutralRecurrence{Interval{T}},y::Interval)
   nr = IntervalRootFinding_newton(FHat(r,y),DFHat(r),Interval{T}(0,y.hi))
@@ -23,12 +19,14 @@ function mapinv_trans{T}(r::NeutralRecurrence{Interval{T}},y::Interval)
 end
 mapinv{T}(r::NeutralRecurrence{Interval{T}},y::Real) = unhat(mapinv_trans(r,hat(Interval{T}(y),r)),r)
 
-function IntervalRootFinding_newton{T}(f,df,x::Interval{T},tol=200eps(x.hi))
+function IntervalRootFinding_newton{T}(f,df,x::Interval{T})#,tol=20eps(T))
   ctr = 0
-  while diam(x) > tol
+  while true #diam(x) > tol
     xm = mid(x)
     xn = xm - f(xm)./df(x)
-    x = x ∩ xn
+    x,xo = x ∩ xn,x
+    xo == x && break
+    ctr += 1
     ctr > 100 && error("Failure to converge")
   end
   x

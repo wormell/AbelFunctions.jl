@@ -1,13 +1,13 @@
-@compat mutable struct AbelFunction{T<:Real,ffa,dffa}
+@compat struct AbelFunction{T<:Real,ffa,dffa}
   r::NeutralRecurrence{T,ffa,dffa}
   # rad::T # radius of accuracy
   coeffs::Vector{T}
   offset::T
-  n::Int # order of approximation (≥ncall)
+  n::Int # order of approximation (≥ncall, TODO: assert this)
   nrad::T # radius of there being bounds given n
   noptrad::T # radius of exponential accuracy given n
   ncall::Int # (=length(coeffs) -2)
-  callrad::T # radius of callability
+  callrad::T # radius of callability (≥noptrad, TODO: assert this)
   compresserr::T # compression error on radius of callability
   cr::T
   E1::T
@@ -31,31 +31,33 @@ function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vecto
   noptrad = nrad*cr(r)/Base.e
   if compress
     callrad=2noptrad # default??
-    cs = reverse(cumsum(reverse(abs.((-1:n).*coeffs).*callrad.^(-1:n))))
+    cs = reverse(cumsum(reverse((1:n).*abs.(view(coeffs,3:n+2)).*callrad.^(1:n))))
     ncall = findlast(cs.>prec(T))
     compresserr = cs[ncall+1]/callrad^(ncall+1)/(ncall+1)
+    coeffss = view(coeffs,1:ncall+2)
   else
     callrad=nrad
     ncall = n
     compresserr = zero(T)
+    coeffss = coeffs
   end
 
-  AbelFunction{T,ffa,dffa}(r,coeffs,offset,n,nrad,noptrad,ncall,callrad,compresserr,
+  AbelFunction{T,ffa,dffa}(r,coeffss,offset,n,nrad,noptrad,ncall,callrad,compresserr,
   cr(r),abelerrorconstant1(r),abelerrorconstant2(r))
 end
 
 # constructing given coefficients and basepoint
 function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T};basepoint::Real=unhat(r.rad,r),compress=true)
-  a = AbelFunction(r,coeffs,zero(T),compress=compress)
   @assert basepoint > 0
   bp = hat(basepoint,r)
+  a = AbelFunction(r,coeffs,zero(T),compress=false)
   ctr = 0
   while ~(bp < a.noptrad)
     bp = mapinv_trans(r,bp)
     ctr += 1
   end
-  a.offset = -(map_trans(a,bp)-ctr)
-  a
+  offset = -(map_trans(a,bp)-ctr)
+  AbelFunction(r,coeffs,offset,compress=compress)
 end
 
 # constructing given order and basepoint
@@ -131,10 +133,9 @@ function map_trans(a::AbelFunction,ẑ)
   @assert abs(ẑ) < a.callrad
   R = a.coeffs[1]/ẑ + a.coeffs[2]*log(ẑ)
   ẑpow = copy(ẑ)
-  for i = 1:a.n
+  for i = 1:a.ncall
     R += a.coeffs[i+2]*ẑpow
     # println(a.coeffs[i+2]*ẑpow)
-
     ẑpow *= ẑ
   end
   R += a.offset
@@ -145,7 +146,7 @@ end
 function mapD{T}(a::AbelFunction{T},z)
   zt = a.r.sgn*(z-a.r.p)
   ẑ = zt^a.r.α
-  map_transD(a,ẑ)*a.r.α*ẑ/zt
+  mapD_trans(a,ẑ)*a.r.α*ẑ/zt
 end
 
 function mapD_trans{T}(a::AbelFunction{T},ẑ)
@@ -153,7 +154,7 @@ function mapD_trans{T}(a::AbelFunction{T},ẑ)
   dR = -a.coeffs[1]/ẑ
   dR = (dR + a.coeffs[2])/ẑ
   ẑpow = copy(ẑ)
-  for i = 1:a.n
+  for i = 1:a.ncall
     dR += i*a.coeffs[i+2]*ẑpow
     ẑpow *= ẑ
   end
@@ -173,7 +174,7 @@ function mapP_trans{T}(a::AbelFunction{T},ẑ)
   dR = -a.coeffs[1]/ẑ
   dR = (dR + a.coeffs[2])/ẑ
   ẑpow = copy(ẑ)
-  for i = 1:a.n
+  for i = 1:a.ncall
     pe = a.coeffs[i+2]*ẑpow
     R += pe
     dR += i*pe
