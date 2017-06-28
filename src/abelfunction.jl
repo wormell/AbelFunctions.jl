@@ -1,4 +1,4 @@
-@compat struct AbelFunction{T<:Real,ffa,dffa}
+@compat immutable AbelFunction{T<:Real,ffa,dffa}
   r::NeutralRecurrence{T,ffa,dffa}
   # rad::T # radius of accuracy
   coeffs::Vector{T}
@@ -31,18 +31,18 @@ function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vecto
   noptrad = nrad*cr(r)/Base.e
   if compress
     callrad=2noptrad # default??
-    cs = reverse(cumsum(reverse((1:n).*abs.(view(coeffs,3:n+2)).*callrad.^(1:n))))
+    @compat cs = reverse(cumsum(reverse((1:n).*abs.(coeffs[3:n+2]).*callrad.^(1:n))))
     ncall = findlast(cs.>prec(T))
     compresserr = cs[ncall+1]/callrad^(ncall+1)/(ncall+1)
-    coeffss = view(coeffs,1:ncall+2)
+    # coeffss = view(coeffs,1:ncall+2)
   else
     callrad=nrad
     ncall = n
     compresserr = zero(T)
-    coeffss = coeffs
+    # coeffss = coeffs
   end
 
-  AbelFunction{T,ffa,dffa}(r,coeffss,offset,n,nrad,noptrad,ncall,callrad,compresserr,
+  AbelFunction{T,ffa,dffa}(r,coeffs[1:ncall+2],offset,n,nrad,noptrad,ncall,callrad,compresserr,
   cr(r),abelerrorconstant1(r),abelerrorconstant2(r))
 end
 

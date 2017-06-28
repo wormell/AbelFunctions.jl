@@ -1,12 +1,12 @@
 # REAL INTERVAL NEWTON
 
-@compat struct FHat{T}<:Function
+@compat immutable FHat{T}
   r::NeutralRecurrence{T}
   val::T
 end
 @compat (d::FHat)(ẑ) = ẑ*(1+d.r.fa(ẑ))^d.r.α - d.val
 
-@compat struct DFHat{T}<:Function
+@compat immutable DFHat{T}
   r::NeutralRecurrence{T}
 end
 @compat (d::DFHat)(ẑ) = mapD_trans(d.r,ẑ)
