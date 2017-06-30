@@ -24,8 +24,8 @@ abelerrorconstant2(r::NeutralRecurrence) = (2r.F*cr(r)/3r.dfa0)
 ## CONSTRUCTORS
 
 # constructing given coefficients and offset
-function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T},offset::T;compress=true)
-  n = length(coeffs)-2
+function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T},offset::T;n=length(coeffs)-2,compress=true)
+  # n = length(coeffs)-2
   nrad = min(log(T(2))/(r.F*(r.α*n-1)),r.rad)
 
   noptrad = nrad*cr(r)/Base.e
