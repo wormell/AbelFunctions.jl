@@ -25,13 +25,17 @@ end
 hat(z,r) = ((z-r.p)*r.sgn)^r.α
 unhat(ẑ,r) = r.sgn*ẑ^(1/r.α)+r.p
 
-@compat (r::NeutralRecurrence)(x) = (x-r.p)*(1+r.fa(hat(x,r)))
+@compat (r::NeutralRecurrence)(x) = r.p + (x-r.p)*(1+r.fa(hat(x,r)))
 map_trans(r::NeutralRecurrence,x̂) = x̂*(1+r.fa(x̂))^r.α
 
 function mapD_trans(r::NeutralRecurrence,x̂)
   fa = 1+r.fa(x̂)
   faα = fa^r.α
   (1+r.α*r.dfa(x̂)*x̂/fa)*faα
+end
+function mapD(r::NeutralRecurrence,x)
+  x̂ = hat(x,r)
+  1 + r.fa(x̂) + (r.α/r.sgn)*x̂*r.dfa(x̂)
 end
 
 

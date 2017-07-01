@@ -30,10 +30,11 @@ function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vecto
 
   noptrad = nrad*cr(r)/Base.e
   if compress
-    callrad=2noptrad # default??
-    @compat cs = reverse(cumsum(reverse((1:n).*abs.(coeffs[3:n+2]).*callrad.^(1:n))))
+    callrad=4noptrad/3 # default??
+    callrad_xtra=3callrad/2 # for abelerrorD
+    @compat cs = reverse(cumsum(reverse((1:n).*abs.(coeffs[3:n+2]).*callrad_xtra.^(1:n))))
     ncall = findlast(cs.>prec(T))
-    compresserr = cs[ncall+1]/callrad^(ncall+1)/(ncall+1)
+    compresserr = cs[ncall+1]/callrad_xtra^(ncall+1)/(ncall+1)
     # coeffss = view(coeffs,1:ncall+2)
   else
     callrad=nrad
@@ -124,13 +125,15 @@ function abelerror{T}(a::AbelFunction{T},ẑ,n=a.n)
   a.E1*(1+a.E2)*(Reẑii/(a.cr*a.nrad))^(n+1) + abs(ẑ)^(a.ncall+1)*a.compresserr
 end
 function abelerrorD{T}(a::AbelFunction{T},ẑ,n=a.n)
-  30abs(ẑ)*erroradjustment(T,abelerror(a,ẑ,n)) #TODO: get actual error bounds lol
+  absẑ = abs(ẑ)
+  ẑanalytic_edge = 3/(4/ẑ-2/absẑ)
+  2/absẑ*erroradjustment(T,abelerror(a,ẑanalytic_edge,n))
   #includes: + (a.ncall+1)*abs(ẑ)^(a.ncall+1)*a.compresserr
 end
 
 @compat (a::AbelFunction)(z) = map_trans(a,hat(z,a.r))
 function map_trans(a::AbelFunction,ẑ)
-  @assert abs(ẑ) < a.callrad
+  @assert abs(ẑ) ≤ a.callrad
   R = a.coeffs[1]/ẑ + a.coeffs[2]*log(ẑ)
   ẑpow = copy(ẑ)
   for i = 1:a.ncall
@@ -138,22 +141,20 @@ function map_trans(a::AbelFunction,ẑ)
     # println(a.coeffs[i+2]*ẑpow)
     ẑpow *= ẑ
   end
-  R += a.offset
   R += erroradjustment(abelerror(a,ẑ))
+  R += a.offset
   R
 end
 
 function mapD{T}(a::AbelFunction{T},z)
-  zt = a.r.sgn*(z-a.r.p)
-  ẑ = zt^a.r.α
-  mapD_trans(a,ẑ)*a.r.α*ẑ/zt
+  ẑ = hat(z,a.r)
+  mapD_trans(a,ẑ)*a.r.α*ẑ/(z-a.r.p) # sgn?
 end
 
 function mapD_trans{T}(a::AbelFunction{T},ẑ)
-  @assert abs(ẑ) < a.callrad
-  dR = -a.coeffs[1]/ẑ
-  dR = (dR + a.coeffs[2])/ẑ
-  ẑpow = copy(ẑ)
+  @assert abs(ẑ) ≤ a.callrad
+  dR = (-a.coeffs[1]/ẑ + a.coeffs[2])/ẑ
+  ẑpow = one(typeof(ẑ))
   for i = 1:a.ncall
     dR += i*a.coeffs[i+2]*ẑpow
     ẑpow *= ẑ
@@ -169,19 +170,19 @@ function mapP{T}(a::AbelFunction{T},z)
   R,dR*a.r.α*ẑ/zt
 end
 function mapP_trans{T}(a::AbelFunction{T},ẑ)
-  @assert abs(ẑ) < a.callrad
+  @assert abs(ẑ) ≤ a.callrad
   R = a.coeffs[1]/ẑ + a.coeffs[2]*log(ẑ)
   dR = -a.coeffs[1]/ẑ
   dR = (dR + a.coeffs[2])/ẑ
-  ẑpow = copy(ẑ)
+  ẑpow = one(typeof(ẑ))
   for i = 1:a.ncall
     pe = a.coeffs[i+2]*ẑpow
-    R += pe
     dR += i*pe
+    R += pe*ẑ
     ẑpow *= ẑ
   end
   dR += erroradjustment(T,abelerrorD(a,ẑ))
+  R += erroradjustment(T,abelerror(a,ẑ))
   R += a.offset
-  R += erroradjustment(abelerror(a,ẑ))
   R,dR
 end
