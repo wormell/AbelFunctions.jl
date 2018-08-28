@@ -1,5 +1,5 @@
 module AbelFunctions
-using Compat, IntervalArithmetic, IntervalRootFinding, FastTransforms
+using Compat, IntervalArithmetic, FastTransforms
 #using IntervalRootFinding
 
 include("general.jl")
