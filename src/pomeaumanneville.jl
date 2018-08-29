@@ -3,14 +3,14 @@
   pow2α::T
 end
 PomFA(α) = PomFA(α,exp2(α))
-@compat (p::PomFA)(x) = p.pow2α*x
+(p::PomFA)(x) = p.pow2α*x
 
 @compat immutable PomDFA{T<:Real}
   α::T
   pow2α::T
 end
 PomDFA(α) = PomDFA(α,exp2(α))
-@compat (p::PomDFA)(x) = p.pow2α
+(p::PomDFA)(x) = p.pow2α
 
 function Pom(α,T=typeof(float(α)))
   αT = convert(T,α)

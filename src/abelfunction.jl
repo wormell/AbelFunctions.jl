@@ -24,7 +24,7 @@ abelerrorconstant2(r::NeutralRecurrence) = (2r.F*cr(r)/3r.dfa0)
 ## CONSTRUCTORS
 
 # constructing given coefficients and offset
-function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T},offset::T;n=length(coeffs)-2,compress=true)
+function AbelFunction(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T},offset::T;n=length(coeffs)-2,compress=true) where {T,ffa,dffa}
   # n = length(coeffs)-2
   nrad = min(log(T(2))/(r.F*(r.α*n-1)),r.rad)
 
@@ -48,7 +48,7 @@ function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vecto
 end
 
 # constructing given coefficients and basepoint
-function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T};basepoint::Real=unhat(r.rad,r),compress=true)
+function AbelFunction(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T};basepoint::Real=unhat(r.rad,r),compress=true)  where {T,ffa,dffa}
   @assert basepoint > 0
   bp = hat(basepoint,r)
   a = AbelFunction(r,coeffs,zero(T),compress=false)
@@ -62,7 +62,7 @@ function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vecto
 end
 
 # constructing given order and basepoint
-function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},n::Int;basepoint::Real=unhat(r.rad,r),compress=true)
+function AbelFunction(r::NeutralRecurrence{T,ffa,dffa},n::Int;basepoint::Real=unhat(r.rad,r),compress=true) where {T,ffa,dffa}
   s = min(log(T(2))/(r.F*(r.α*n-1)),r.rad/2)
   Rs = max(r.rad,2s)
 
@@ -105,7 +105,7 @@ function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa},n::Int;basepo
 end
 
 # constructing given only basepoint
-function AbelFunction{T,ffa,dffa}(r::NeutralRecurrence{T,ffa,dffa};basepoint::Real=unhat(r.rad,r),tol=prec(T),compress=true)
+function AbelFunction(r::NeutralRecurrence{T,ffa,dffa};basepoint::Real=unhat(r.rad,r),tol=prec(T),compress=true) where {T,ffa,dffa}
   ec = abelerrorconstant1(r)*(1+abelerrorconstant2(r))
   n = roundupbound(-log(tol/ec)-1)
   AbelFunction(r,n;basepoint=basepoint,compress=compress)
@@ -120,11 +120,11 @@ end
 # # TODO: ascertain 1. if this is right 2. decide if need rad to be the same as well
 # (==)(a1::AbelFunction,a2::AbelFunction) = (a1.offset==a2.offset)&&(a1.r == a2.r)
 
-function abelerror{T}(a::AbelFunction{T},ẑ,n=a.n)
+function abelerror(a::AbelFunction{T},ẑ,n=a.n) where T
   Reẑii = real(ẑ)*(1+(imag(ẑ)/real(ẑ))^2)
   a.E1*(1+a.E2)*(Reẑii/(a.cr*a.nrad))^(n+1) + abs(ẑ)^(a.ncall+1)*a.compresserr
 end
-function abelerrorD{T}(a::AbelFunction{T},ẑ,n=a.n)
+function abelerrorD(a::AbelFunction{T},ẑ,n=a.n) where T
   absẑ = abs(ẑ)
   ẑanalytic_edge = 3/(4/ẑ-2/absẑ)
   2/absẑ*erroradjustment(T,abelerror(a,ẑanalytic_edge,n))
@@ -146,12 +146,12 @@ function map_trans(a::AbelFunction,ẑ)
   R
 end
 
-function mapD{T}(a::AbelFunction{T},z)
+function mapD(a::AbelFunction,z)
   ẑ = hat(z,a.r)
   mapD_trans(a,ẑ)*a.r.α*ẑ/(z-a.r.p) # sgn?
 end
 
-function mapD_trans{T}(a::AbelFunction{T},ẑ)
+function mapD_trans(a::AbelFunction{T},ẑ) where T
   @assert abs(ẑ) ≤ a.callrad
   dR = (-a.coeffs[1]/ẑ + a.coeffs[2])/ẑ
   ẑpow = one(typeof(ẑ))
@@ -163,13 +163,13 @@ function mapD_trans{T}(a::AbelFunction{T},ẑ)
   dR
 end
 
-function mapP{T}(a::AbelFunction{T},z)
+function mapP(a::AbelFunction,z)
   zt = a.r.sgn*(z-a.r.p)
   ẑ = zt^a.r.α
   R,dR = map_transP(a,ẑ)
   R,dR*a.r.α*ẑ/zt
 end
-function mapP_trans{T}(a::AbelFunction{T},ẑ)
+function mapP_trans(a::AbelFunction{T},ẑ) where T
   @assert abs(ẑ) ≤ a.callrad
   R = a.coeffs[1]/ẑ + a.coeffs[2]*log(ẑ)
   dR = -a.coeffs[1]/ẑ

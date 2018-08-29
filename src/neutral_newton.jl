@@ -11,15 +11,15 @@ end
 end
 @compat (d::DFHat)(ẑ) = mapD_trans(d.r,ẑ)
 
-function mapinv_trans{T}(r::NeutralRecurrence{Interval{T}},y::Interval)
+function mapinv_trans(r::NeutralRecurrence{Interval{T}},y::Interval) where T
   nr = IntervalRootFinding_newton(FHat(r,y),DFHat(r),Interval{T}(0,y.hi))
   # @assert length(nr) == 1
   # nr[1].interval
   nr
 end
-mapinv{T}(r::NeutralRecurrence{Interval{T}},y::Real) = unhat(mapinv_trans(r,hat(Interval{T}(y),r)),r)
+mapinv(r::NeutralRecurrence{Interval{T}},y::Real) where T = unhat(mapinv_trans(r,hat(Interval{T}(y),r)),r)
 
-function IntervalRootFinding_newton{T}(f,df,x::Interval{T})#,tol=20eps(T))
+function IntervalRootFinding_newton(f,df,x::Interval{T}) where T#,tol=20eps(T))
   ctr = 0
   while true #diam(x) > tol
     xm = mid(x)
@@ -37,7 +37,7 @@ end
 
 # COMPLEX/GENERAL NEWTON
 
-function neutral_newton_step{T}(r::NeutralRecurrence{T},y,x)
+function neutral_newton_step(r::NeutralRecurrence{T},y,x) where T
   fa = 1+r.fa(x)
   faα = fa^r.α
   xx = x-(x-y/faα)/(1+r.α*r.dfa(x)*x/fa)
@@ -45,7 +45,7 @@ function neutral_newton_step{T}(r::NeutralRecurrence{T},y,x)
 end
 
 
-function neutral_newton_trans{T}(r::NeutralRecurrence{T},y,tol=100eps(abs(y)))
+function neutral_newton_trans(r::NeutralRecurrence{T},y,tol=100eps(abs(y))) where T
   x = T(r.rad)
   K = log(r.dlogdfmax/2)
   rm = zero(T)
@@ -59,11 +59,11 @@ function neutral_newton_trans{T}(r::NeutralRecurrence{T},y,tol=100eps(abs(y)))
   x
 end
 
-neutral_newton{T}(r::NeutralRecurrence{T},y,tol=20eps(abs(y-r.p))) =
+neutral_newton(r::NeutralRecurrence{T},y,tol=20eps(abs(y-r.p))) where T =
   unhat(neutral_newton_trans(r,hat(y,r),tol^r.α),r)
 
 
-function neutral_newton_trans{T}(r::NeutralRecurrence{Interval{T}},y,tol=20eps(abs(y).hi))
+function neutral_newton_trans(r::NeutralRecurrence{Interval{T}},y,tol=20eps(abs(y).hi)) where T
   @assert abs(y) < r.rad
   @assert abs(angle(y)) < r.Ψ
   x = copy(y)
@@ -76,10 +76,10 @@ function neutral_newton_trans{T}(r::NeutralRecurrence{Interval{T}},y,tol=20eps(a
   neutral_newton_step(r,y,x)[1] ∩ x
 end
 
-neutral_newton{T}(r::NeutralRecurrence{Interval{T}},y,tol=20eps((abs(y-r.p).hi)^r.α)) =
+neutral_newton(r::NeutralRecurrence{Interval{T}},y,tol=20eps((abs(y-r.p).hi)^r.α)) where T =
   unhat(neutral_newton_trans(r,hat(y,r),tol),r)
 
-mapinv_trans{T}(r::NeutralRecurrence{T},y::Real) = neutral_newton_trans(r,T(y))
-mapinv{T}(r::NeutralRecurrence{T},y::Real) = neutral_newton(r,T(y))
-mapinv_trans{T}(r::NeutralRecurrence{T},y::Complex) = neutral_newton_trans(r,Complex{T}(y))
-mapinv{T}(r::NeutralRecurrence{T},y::Complex) = neutral_newton(r,Complex{T}(y))
+mapinv_trans(r::NeutralRecurrence{T},y::Real) where T = neutral_newton_trans(r,convert(T,y))
+mapinv(r::NeutralRecurrence{T},y::Real) where T = neutral_newton(r,convert(T,y))
+mapinv_trans(r::NeutralRecurrence{T},y::Complex) where T = neutral_newton_trans(r,convert(Complex{T},y))
+mapinv(r::NeutralRecurrence{T},y::Complex) where T = neutral_newton(r,convert(Complex{T},y))

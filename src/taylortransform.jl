@@ -1,6 +1,6 @@
 # from FastTransforms
-function backend_fft_pow2!{T}(x::Vector{T})
-    n,big2,bigpi=length(x),2one(T),T(pi)
+function backend_fft_pow2!(x::Vector{T}) where T
+    n,big2,bigpi=length(x),2one(T),convert(T,pi)
     nn,j=n÷2,1
     for i=1:2:n-1
         if j>i
@@ -35,7 +35,7 @@ function backend_fft_pow2!{T}(x::Vector{T})
     return x
 end
 
-function fft_pow2{T}(x::Vector{T})
+function fft_pow2(x::Vector)
     y = FastTransforms.interlace(real(x),imag(x))
     backend_fft_pow2!(y)
 @compat    return complex.(y[1:2:end],y[2:2:end])
@@ -43,7 +43,7 @@ end
 
 taylorinterpolationerror(r,Ninterp::Int,M,R) = M*(r/R)^Ninterp/(1-r/R)
 
-function taylortransform{T}(vals::Vector{Complex{T}},r::T,M::T,R::T)
+function taylortransform(vals::Vector{Complex{T}},r::T,M::T,R::T) where T
   Ninterp = length(vals)
   cfs = fft_pow2(vals)/Ninterp
   err= erroradjustment(Complex{T},taylorinterpolationerror(r,Ninterp,M,R))

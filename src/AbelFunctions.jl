@@ -2,6 +2,10 @@ module AbelFunctions
 using Compat, IntervalArithmetic, FastTransforms
 #using IntervalRootFinding
 
+import Base.^
+
+^(a::Complex{Interval{T}}, b::Interval{T}) where T = exp(b*log(a))
+
 include("general.jl")
 include("taylortransform.jl")
 include("neutral.jl")
