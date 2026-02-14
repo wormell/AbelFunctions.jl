@@ -1,4 +1,4 @@
-@compat immutable AbelFunction{T<:Real,ffa,dffa}
+struct AbelFunction{T<:Real,ffa,dffa}
   r::NeutralRecurrence{T,ffa,dffa}
   # rad::T # radius of accuracy
   coeffs::Vector{T}

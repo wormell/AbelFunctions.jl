@@ -1,4 +1,4 @@
-@compat immutable NeutralRecurrence{T<:Real,ffa,dffa}
+@compat struct NeutralRecurrence{T<:Real,ffa,dffa}
   fa::ffa
   dfa::dffa
   α::T

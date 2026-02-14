@@ -1,11 +1,11 @@
-@compat immutable PomFA{T<:Real}
+@compat struct PomFA{T<:Real}
   α::T
   pow2α::T
 end
 PomFA(α) = PomFA(α,exp2(α))
 (p::PomFA)(x) = p.pow2α*x
 
-@compat immutable PomDFA{T<:Real}
+@compat struct PomDFA{T<:Real}
   α::T
   pow2α::T
 end
