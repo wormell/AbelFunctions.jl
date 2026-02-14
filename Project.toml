@@ -2,4 +2,4 @@ name = "AbelFunctions"
 uuid = "2ffed88c-6fd5-5810-8176-fe43c1db8acb"
 
 [compat]
-julia = "0.4"
+julia = "0.4+"
