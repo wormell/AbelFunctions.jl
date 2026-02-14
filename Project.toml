@@ -1,5 +1,6 @@
 name = "AbelFunctions"
 uuid = "2ffed88c-6fd5-5810-8176-fe43c1db8acb"
+version = "0.1.0"
 
 [compat]
-julia = "0.4+"
+julia = "1"
