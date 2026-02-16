@@ -21,7 +21,7 @@ midinterval(z::Complex{T}) where {T<:Interval} = complex(midinterval(real(z)),mi
 # from ValidatedTransfer
 function upbound(x)
   xu = _upbound(x)
-  assert(xu≥0)
+  @assert xu≥0
   xu
 end
 _upbound(x::Real) = x

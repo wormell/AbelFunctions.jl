@@ -28,7 +28,7 @@ function AbelFunction(r::NeutralRecurrence{T,ffa,dffa},coeffs::Vector{T},offset:
   # n = length(coeffs)-2
   nrad = min(log(T(2))/(r.F*(r.α*n-1)),r.rad)
 
-  noptrad = nrad*cr(r)/Base.e
+  noptrad = nrad*cr(r)/exp(one(T))
   if compress
     callrad=4noptrad/3 # default??
     callrad_xtra=3callrad/2 # for abelerrorD
@@ -67,9 +67,9 @@ function AbelFunction(r::NeutralRecurrence{T,ffa,dffa},n::Int;basepoint::Real=un
   Rs = max(r.rad,2s)
 
   xn = n*Rs*r.F*r.α*(1+r.F*Rs)^(r.α*n-1)
-  Ninterp = nextpow2(max(n+2,roundupbound(-log(prec(T)/xn)/log(Rs/s))))
-  wvals = Array{Complex{T}}(Ninterp)
-  Wvals = Array{Complex{T}}(Ninterp,n+1)
+  Ninterp = nextpow(2,max(n+2,roundupbound(-log(prec(T)/xn)/log(Rs/s))))
+  wvals = Array{Complex{T}}(undef,Ninterp)
+  Wvals = Array{Complex{T}}(undef,Ninterp,n+1)
   ẑ = complex(s);
   twid = exp(im*2T(pi)/Ninterp)
   for i = 1:Ninterp
